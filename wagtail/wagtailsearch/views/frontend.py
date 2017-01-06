@@ -1,5 +1,7 @@
 from __future__ import absolute_import, unicode_literals
 
+import collections
+
 from django.conf import settings
 from django.core.paginator import EmptyPage, PageNotAnInteger, Paginator
 from django.http import JsonResponse
@@ -18,7 +20,7 @@ def search(
         json_attrs=['title', 'url'],
         show_unpublished=False,
         search_title_only=False,
-        extra_filters={},
+        extra_filters=[],  # list of django.db.models.Q
         path=None):
 
     # Get default templates
@@ -46,7 +48,13 @@ def search(
             pages = pages.live()
 
         if extra_filters:
-            pages = pages.filter(**extra_filters)
+            # let us keep backward compatibility here
+            if isinstance(extra_filters, collections.Mapping):
+                pages = pages.filter(**extra_filters)
+            else:
+                # filter with:  django.db.models.Q
+                # exclude with: ~django.db.models.Q
+                pages = pages.filter(*extra_filters)
 
         if search_title_only:
             search_results = pages.search(query_string, fields=['title'])
